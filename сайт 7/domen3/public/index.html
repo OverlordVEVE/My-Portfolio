@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Загрузка изображений с капчей</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* Стили для модального окна капчи */
+        .captcha-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .captcha-modal.active {
+            display: flex;
+        }
+        
+        .captcha-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+        
+        .captcha-header {
+            margin-bottom: 20px;
+        }
+        
+        .captcha-header h2 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .captcha-image {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 2px solid #e9ecef;
+            position: relative;
+            overflow: hidden;
+            min-height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .captcha-text {
+            font-family: 'Arial', sans-serif;
+            font-size: 40px;
+            font-weight: bold;
+            letter-spacing: 15px;
+            user-select: none;
+            padding: 10px;
+            position: relative;
+            display: inline-block;
+            transform-style: preserve-3d;
+            text-shadow: 2px 2px 0px rgba(0,0,0,0.1);
+        }
+        
+        .captcha-distortion {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0,0,0,0.05) 2px,
+                    rgba(0,0,0,0.05) 4px
+                ),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 1px,
+                    rgba(0,0,0,0.03) 1px,
+                    rgba(0,0,0,0.03) 3px
+                );
+            pointer-events: none;
+            opacity: 0.7;
+        }
+        
+        .captcha-line {
+            position: absolute;
+            background-color: rgba(52, 152, 219, 0.3);
+            transform-origin: center;
+        }
+        
+        .captcha-dot {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background-color: rgba(231, 76, 60, 0.4);
+            border-radius: 50%;
+        }
+        
+        .captcha-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .captcha-refresh {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 0.3s;
+        }
+        
+        .captcha-refresh:hover {
+            background-color: #2980b9;
+        }
+        
+        .captcha-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 18px;
+            text-align: center;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        
+        .captcha-input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .captcha-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .captcha-error {
+            color: #e74c3c;
+            margin-top: 10px;
+            font-size: 14px;
+            min-height: 20px;
+        }
+        
+        .captcha-message {
+            color: #27ae60;
+            margin-top: 10px;
+            font-size: 14px;
+            min-height: 20px;
+        }
+        
+        .success-message {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            border: 1px solid #c3e6cb;
+            display: none;
+        }
+        
+        .success-message.show {
+            display: block;
+        }
+        
+        #uploadForm {
+            display: none;
+        }
+        
+        #uploadForm.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Загрузите изображение</h1>
+        
+        <!-- Сообщение об успешной проверке -->
+        <div id="successMessage" class="success-message">
+            ✅ <strong>Проверка пройдена!</strong> Теперь вы можете загрузить изображение.
+        </div>
+        
+        <!-- Основная форма (изначально скрыта) -->
+        <form id="uploadForm" action="upload.php" method="POST" enctype="multipart/form-data" class="upload-form">
+            <div class="form-group">
+                <label for="image">Выберите изображение:</label>
+                <input type="file" id="image" name="image" accept="image/*" required>
+                <small>Допустимые форматы: JPG, PNG, GIF (макс. 5MB)</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Описание (необязательно):</label>
+                <textarea id="description" name="description" rows="3" placeholder="Добавьте описание изображения..."></textarea>
+            </div>
+            
+            <!-- Скрытое поле для капчи -->
+            <input type="hidden" id="captchaVerified" name="captcha_verified" value="0">
+            
+            <button type="submit" class="btn">Отправить изображение</button>
+        </form>
+        
+        <!-- Кнопка для открытия капчи (изначально видна) -->
+        <div id="captchaTrigger">
+            <button id="openCaptchaBtn" class="btn">Загрузить изображение</button>
+        </div>
+        
+        <div class="info">
+            <h3>Требования к изображениям:</h3>
+            <ul>
+                <li>Максимальный размер файла: 5MB</li>
+                <li>Допустимые форматы: JPG, JPEG, PNG, GIF</li>
+                <li>Изображения должны быть безопасными</li>
+                <li>Для загрузки требуется пройти проверку капчей</li>
+            </ul>
+        </div>
+        
+        <div class="link-to-gallery">
+            <a href="view.php" class="btn secondary">Посмотреть галерею</a>
+        </div>
+    </div>
+    
+    <!-- Модальное окно капчи -->
+    <div id="captchaModal" class="captcha-modal">
+        <div class="captcha-content">
+            <div class="captcha-header">
+                <h2>Подтвердите, что вы не робот</h2>
+                <p>Введите символы, которые видите ниже</p>
+            </div>
+            
+            <div class="captcha-image" id="captchaContainer">
+                <div id="captchaDisplay" class="captcha-text"></div>
+                <div class="captcha-distortion"></div>
+            </div>
+            
+            <div class="captcha-controls">
+                <input type="text" id="captchaInput" class="captcha-input" placeholder="Введите капчу" maxlength="5" autocomplete="off">
+                <button type="button" class="captcha-refresh" onclick="generateCaptcha()" title="Обновить капчу">
+                    ⟳
+                </button>
+            </div>
+            
+            <div id="captchaError" class="captcha-error"></div>
+            <div id="captchaMessage" class="captcha-message"></div>
+            
+            <div class="captcha-buttons">
+                <button type="button" class="btn" onclick="verifyCaptcha()">Подтвердить</button>
+                <button type="button" class="btn secondary" onclick="closeCaptcha()">Отмена</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Массив символов для капчи (без похожих символов)
+        const captchaChars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let currentCaptcha = '';
+        
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', function() {
+            generateCaptcha();
+            
+            // Открытие капчи при клике на кнопку
+            document.getElementById('openCaptchaBtn').addEventListener('click', openCaptcha);
+            
+            // Проверка капчи перед отправкой формы
+            document.getElementById('uploadForm').addEventListener('submit', function(e) {
+                const isVerified = document.getElementById('captchaVerified').value === '1';
+                
+                if (!isVerified) {
+                    e.preventDefault();
+                    openCaptcha();
+                    document.getElementById('captchaError').textContent = 'Сначала пройдите проверку капчей';
+                }
+            });
+        });
+        
+        // Создание эффектов искажения
+        function createDistortionEffects() {
+            const container = document.getElementById('captchaContainer');
+            
+            // Удаляем старые эффекты
+            const oldLines = container.querySelectorAll('.captcha-line');
+            const oldDots = container.querySelectorAll('.captcha-dot');
+            oldLines.forEach(el => el.remove());
+            oldDots.forEach(el => el.remove());
+            
+            // Создаем линии
+            for (let i = 0; i < 5; i++) {
+                const line = document.createElement('div');
+                line.className = 'captcha-line';
+                line.style.width = Math.random() * 100 + 50 + 'px';
+                line.style.height = '1px';
+                line.style.top = Math.random() * 100 + '%';
+                line.style.left = Math.random() * 100 + '%';
+                line.style.transform = `rotate(${Math.random() * 180}deg)`;
+                container.appendChild(line);
+            }
+            
+            // Создаем точки
+            for (let i = 0; i < 20; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'captcha-dot';
+                dot.style.top = Math.random() * 100 + '%';
+                dot.style.left = Math.random() * 100 + '%';
+                container.appendChild(dot);
+            }
+        }
+        
+        // Обновление отображения капчи
+        function updateCaptchaDisplay() {
+            const captchaDisplay = document.getElementById('captchaDisplay');
+            
+            // Добавляем случайные искажения к каждому символу
+            let distortedHTML = '';
+            for (let i = 0; i < currentCaptcha.length; i++) {
+                const char = currentCaptcha[i];
+                const rotation = (Math.random() * 20 - 10); // -10 до +10 градусов
+                const skewX = Math.random() * 10 - 5; // -5 до +5 градусов
+                const skewY = Math.random() * 10 - 5;
+                const scale = 0.9 + Math.random() * 0.2; // 0.9 до 1.1
+                const colorVariation = Math.floor(Math.random() * 30);
+                
+                distortedHTML += `<span style="
+                    display: inline-block;
+                    transform: rotate(${rotation}deg) skew(${skewX}deg, ${skewY}deg) scale(${scale});
+                    color: rgb(${52 + colorVariation}, ${152 + colorVariation}, ${219 - colorVariation});
+                ">${char}</span>`;
+            }
+            
+            captchaDisplay.innerHTML = distortedHTML;
+            createDistortionEffects();
+        }
+        
+        // Генерация случайной капчи с искажениями
+        function generateCaptcha() {
+            currentCaptcha = '';
+            for (let i = 0; i < 5; i++) {
+                const randomIndex = Math.floor(Math.random() * captchaChars.length);
+                currentCaptcha += captchaChars[randomIndex];
+            }
+            
+            updateCaptchaDisplay();
+            
+            document.getElementById('captchaError').textContent = '';
+            document.getElementById('captchaMessage').textContent = '';
+            document.getElementById('captchaInput').value = '';
+            document.getElementById('captchaInput').focus();
+        }
+        
+        // Открытие модального окна капчи
+        function openCaptcha() {
+            generateCaptcha();
+            document.getElementById('captchaModal').classList.add('active');
+            document.getElementById('captchaInput').focus();
+        }
+        
+        // Закрытие модального окна
+        function closeCaptcha() {
+            document.getElementById('captchaModal').classList.remove('active');
+            document.getElementById('captchaError').textContent = '';
+            document.getElementById('captchaMessage').textContent = '';
+            document.getElementById('captchaInput').value = '';
+        }
+        
+        // Проверка капчи
+        function verifyCaptcha() {
+            const userInput = document.getElementById('captchaInput').value.toUpperCase();
+            const errorElement = document.getElementById('captchaError');
+            const messageElement = document.getElementById('captchaMessage');
+            
+            errorElement.textContent = '';
+            messageElement.textContent = '';
+            
+            if (!userInput) {
+                errorElement.textContent = 'Пожалуйста, введите капчу';
+                return;
+            }
+            
+            if (userInput.length !== 5) {
+                errorElement.textContent = 'Капча должна содержать 5 символов';
+                return;
+            }
+            
+            // Проверка капчи
+            if (userInput === currentCaptcha) {
+                messageElement.textContent = 'Капча введена верно!';
+                
+                // Устанавливаем флаг проверки
+                document.getElementById('captchaVerified').value = '1';
+                
+                // Закрываем окно через секунду
+                setTimeout(() => {
+                    closeCaptcha();
+                    
+                    // Показываем сообщение об успехе
+                    document.getElementById('successMessage').classList.add('show');
+                    
+                    // Скрываем кнопку открытия капчи
+                    document.getElementById('captchaTrigger').style.display = 'none';
+                    
+                    // Показываем форму загрузки
+                    document.getElementById('uploadForm').classList.add('show');
+                    
+                    // Фокус на поле выбора файла
+                    document.getElementById('image').focus();
+                }, 1000);
+            } else {
+                errorElement.textContent = 'Неверная капча. Попробуйте еще раз.';
+                document.getElementById('captchaInput').value = '';
+                document.getElementById('captchaInput').focus();
+                
+                // Генерируем новую капчу после ошибки
+                setTimeout(generateCaptcha, 500);
+            }
+        }
+        
+        // Обработка нажатия Enter в поле капчи
+        document.getElementById('captchaInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                verifyCaptcha();
+            }
+        });
+        
+        // Закрытие модального окна по клику вне его
+        document.getElementById('captchaModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeCaptcha();
+            }
+        });
+        
+        // Закрытие по Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeCaptcha();
+            }
+        });
+    </script>
+</body>
+</html>

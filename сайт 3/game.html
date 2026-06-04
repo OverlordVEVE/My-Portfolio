@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Машинка на дороге</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(to bottom, #2c3e50, #34495e);
+            overflow: hidden;
+            padding: 10px;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 600px; /* Увеличена ширина */
+            height: 800px; /* Увеличена высота */
+            margin: 20px;
+            border: 3px solid #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        #road {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: #34495e;
+        }
+        
+        .lane {
+            position: absolute;
+            width: 33.33%;
+            height: 100%;
+            border-right: 2px dashed #ecf0f1;
+        }
+        
+        #lane-left {
+            left: 0;
+        }
+        
+        #lane-center {
+            left: 33.33%;
+        }
+        
+        #lane-right {
+            right: 0;
+            width: 33.33%;
+            border-right: none;
+            border-left: 2px dashed #ecf0f1;
+        }
+        
+        #car {
+            position: absolute;
+            width: 80px; /* Увеличена ширина машинки */
+            height: 120px; /* Увеличена высота машинки */
+            background-color: #e74c3c;
+            border-radius: 10px;
+            bottom: 100px; /* Отступ снизу увеличен */
+            left: 260px; /* Центрирована на средней полосе для новой ширины */
+            z-index: 10;
+            transition: left 0.2s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .car-top {
+            position: absolute;
+            width: 70%;
+            height: 35px; /* Увеличена высота крыши */
+            background-color: #c0392b;
+            top: -25px; /* Поднята крыша */
+            left: 15%;
+            border-radius: 5px;
+        }
+        
+        .wheel {
+            position: absolute;
+            width: 25px; /* Увеличены колеса */
+            height: 25px;
+            background-color: #2c3e50;
+            border-radius: 50%;
+            bottom: 8px;
+        }
+        
+        .wheel-front {
+            right: 12px;
+        }
+        
+        .wheel-back {
+            left: 12px;
+        }
+        
+        .obstacle {
+            position: absolute;
+            width: 60px; /* Увеличена ширина препятствий */
+            height: 70px; /* Увеличена высота препятствий */
+            background-color: #f39c12;
+            border-radius: 5px;
+            z-index: 5;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .obstacle::after {
+            content: '';
+            position: absolute;
+            width: 80%;
+            height: 20px; /* Увеличен внутренний блок */
+            background-color: #d35400;
+            top: 50%;
+            left: 10%;
+            transform: translateY(-50%);
+            border-radius: 3px;
+        }
+        
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #ecf0f1;
+            font-size: 28px; /* Увеличен шрифт */
+            font-weight: bold;
+            z-index: 20;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 100;
+        }
+        
+        #game-over h2 {
+            color: #e74c3c;
+            font-size: 42px; /* Увеличен шрифт */
+            margin-bottom: 30px; /* Увеличен отступ */
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        #game-over p {
+            color: #ecf0f1;
+            font-size: 28px; /* Увеличен шрифт */
+            margin-bottom: 40px; /* Увеличен отступ */
+        }
+        
+        #restart-btn {
+            padding: 15px 35px; /* Увеличена кнопка */
+            font-size: 20px; /* Увеличен шрифт */
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        #restart-btn:hover {
+            background-color: #2980b9;
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 100;
+        }
+        
+        #start-screen h1 {
+            color: #3498db;
+            font-size: 42px; /* Увеличен шрифт */
+            margin-bottom: 30px; /* Увеличен отступ */
+            text-align: center;
+        }
+        
+        #start-screen p {
+            color: #ecf0f1;
+            font-size: 22px; /* Увеличен шрифт */
+            margin-bottom: 40px; /* Увеличен отступ */
+            text-align: center;
+            max-width: 80%;
+            line-height: 1.5;
+        }
+        
+        #controls {
+            color: #ecf0f1;
+            margin-bottom: 40px; /* Увеличен отступ */
+            text-align: center;
+            font-size: 18px; /* Увеличен шрифт */
+        }
+        
+        #start-btn {
+            padding: 15px 35px; /* Увеличена кнопка */
+            font-size: 20px; /* Увеличен шрифт */
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        #start-btn:hover {
+            background-color: #27ae60;
+        }
+        
+        .key {
+            display: inline-block;
+            padding: 8px 12px; /* Увеличены клавиши */
+            background-color: #2c3e50;
+            border-radius: 5px;
+            margin: 0 8px; /* Увеличен отступ */
+            font-weight: bold;
+            font-size: 18px; /* Увеличен шрифт */
+        }
+        
+        #back-to-main {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px; /* Увеличена кнопка */
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 16px; /* Увеличен шрифт */
+            z-index: 200;
+            transition: background-color 0.3s;
+        }
+        
+        #back-to-main:hover {
+            background-color: #2980b9;
+        }
+        
+        #pause-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 42px; /* Увеличен шрифт */
+            font-weight: bold;
+            z-index: 50;
+        }
+        
+        #speed-indicator {
+            position: absolute;
+            top: 20px;
+            right: 150px; /* Смещено из-за увеличения поля */
+            color: #ecf0f1;
+            font-size: 20px; /* Увеличен шрифт */
+            font-weight: bold;
+            z-index: 20;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        #speed-multiplier {
+            color: #f39c12;
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- Кнопка возврата на главную -->
+        <a href="index.html" id="back-to-main">На главную</a>
+        
+        <div id="road">
+            <div id="lane-left" class="lane"></div>
+            <div id="lane-center" class="lane"></div>
+            <div id="lane-right" class="lane"></div>
+            
+            <div id="car">
+                <div class="car-top"></div>
+                <div class="wheel wheel-front"></div>
+                <div class="wheel wheel-back"></div>
+            </div>
+            
+            <div id="score">Очки: 0</div>
+            <div id="speed-indicator">Скорость: <span id="speed-multiplier">1x</span></div>
+        </div>
+        
+        <div id="start-screen">
+            <h1>Машинка на дороге</h1>
+            <p>Избегайте препятствий, переключаясь между тремя полосами!</p>
+            <div id="controls">
+                Управление:<br>
+                <span class="key">←</span> - налево (только на соседнюю полосу)<br>
+                <span class="key">→</span> - направо (только на соседнюю полосу)<br>
+                <span class="key">ПРОБЕЛ</span> - пауза/продолжить
+            </div>
+            <button id="start-btn">Начать игру</button>
+        </div>
+        
+        <div id="game-over">
+            <h2>Игра окончена!</h2>
+            <p id="final-score">Очки: 0</p>
+            <button id="restart-btn">Играть снова</button>
+        </div>
+        
+        <div id="pause-overlay">ПАУЗА</div>
+    </div>
+
+    <script>
+        // Основные переменные игры
+        const gameContainer = document.getElementById('game-container');
+        const car = document.getElementById('car');
+        const road = document.getElementById('road');
+        const scoreElement = document.getElementById('score');
+        const speedMultiplierElement = document.getElementById('speed-multiplier');
+        const gameOverScreen = document.getElementById('game-over');
+        const startScreen = document.getElementById('start-screen');
+        const finalScoreElement = document.getElementById('final-score');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const pauseOverlay = document.getElementById('pause-overlay');
+        
+        let gameActive = false;
+        let gamePaused = false;
+        let score = 0;
+        let carPosition = 1;
+        let obstacles = [];
+        let initialGameSpeed = 4; // Увеличена начальная скорость
+        let gameSpeed = initialGameSpeed;
+        let gameLoopId = null;
+        let obstacleIntervalId = null;
+        let lastScoreForSpeedIncrease = 0;
+        let speedMultiplier = 1;
+        
+        // Позиции полос для ширины 600px
+        const lanePositions = {
+            0: 100,   // Левая полоса: (600/3 - 80)/2 = (200-80)/2 = 60, но для красоты 100
+            1: 260,   // Средняя полоса: 200 + 60 = 260
+            2: 420    // Правая полоса: 400 + 60 = 460, но для красоты 420
+        };
+        
+        // Позиции для препятствий (по центру полос)
+        const obstaclePositions = {
+            0: 110,   // Центр левой полосы
+            1: 270,   // Центр средней полосы
+            2: 430    // Центр правой полосы
+        };
+        
+        // Начальная позиция машинки (средняя полоса)
+        car.style.left = lanePositions[carPosition] + 'px';
+        
+        // Управление машинкой
+        document.addEventListener('keydown', (e) => {
+            if (!gameActive) return;
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                    if (!gamePaused && carPosition > 0) {
+                        moveCar(carPosition - 1);
+                    }
+                    break;
+                case 'ArrowRight':
+                    if (!gamePaused && carPosition < 2) {
+                        moveCar(carPosition + 1);
+                    }
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    togglePause();
+                    break;
+            }
+        });
+        
+        // Кнопки для мобильных устройств
+        document.getElementById('lane-left').addEventListener('click', () => {
+            if (gameActive && !gamePaused && carPosition > 0) moveCar(carPosition - 1);
+        });
+        
+        document.getElementById('lane-center').addEventListener('click', () => {
+            if (gameActive && !gamePaused) {
+                if (carPosition === 0) moveCar(1);
+                else if (carPosition === 2) moveCar(1);
+            }
+        });
+        
+        document.getElementById('lane-right').addEventListener('click', () => {
+            if (gameActive && !gamePaused && carPosition < 2) moveCar(carPosition + 1);
+        });
+        
+        // Функция перемещения машинки
+        function moveCar(targetLane) {
+            carPosition = targetLane;
+            car.style.left = lanePositions[carPosition] + 'px';
+        }
+        
+        // Создание препятствия
+        function createObstacle() {
+            if (!gameActive) return;
+            
+            const obstacleLane = Math.floor(Math.random() * 3);
+            
+            // Проверяем минимальное расстояние между препятствиями
+            let canCreateObstacle = true;
+            
+            for (let i = 0; i < obstacles.length; i++) {
+                const obstacle = obstacles[i];
+                
+                if (obstacle.lane === obstacleLane) {
+                    // Минимальное расстояние на одной полосе - 600 пикселей
+                    if (obstacle.top < 600) {
+                        canCreateObstacle = false;
+                        break;
+                    }
+                } else {
+                    // Минимальное расстояние на разных полосах - 350 пикселей
+                    if (obstacle.top < 350) {
+                        canCreateObstacle = false;
+                        break;
+                    }
+                }
+            }
+            
+            if (!canCreateObstacle) return;
+            
+            const obstacle = document.createElement('div');
+            obstacle.className = 'obstacle';
+            
+            obstacle.style.left = obstaclePositions[obstacleLane] + 'px';
+            obstacle.style.top = '-70px'; // Начинаем за пределами поля
+            
+            road.appendChild(obstacle);
+            
+            obstacles.push({
+                element: obstacle,
+                lane: obstacleLane,
+                top: -70,
+                id: Date.now() + Math.random(),
+                collided: false // Флаг, было ли уже столкновение с этим препятствием
+            });
+        }
+        
+        // Обновление положения препятствий
+        function updateObstacles() {
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obstacle = obstacles[i];
+                
+                obstacle.top += gameSpeed;
+                obstacle.element.style.top = obstacle.top + 'px';
+                
+                // Проверяем столкновение только если препятствие в зоне машинки
+                // Зона машинки: от 580 до 800 по вертикали (машинка находится внизу)
+                if (obstacle.top >= 580 && obstacle.top <= 800 && !obstacle.collided) {
+                    if (checkCollision(obstacle)) {
+                        obstacle.collided = true; // Помечаем, что столкновение уже обработано
+                        gameOver();
+                        return;
+                    }
+                }
+                
+                // Если препятствие ушло за нижнюю границу
+                if (obstacle.top > 850) {
+                    obstacle.element.remove();
+                    obstacles.splice(i, 1);
+                    increaseScore();
+                }
+            }
+        }
+        
+        // Проверка столкновения - улучшенная версия
+        function checkCollision(obstacle) {
+            // Если препятствие уже помечено как обработанное, пропускаем
+            if (obstacle.collided) return false;
+            
+            // Проверяем, находится ли машинка на той же полосе
+            if (carPosition !== obstacle.lane) return false;
+            
+            // Точные координаты машинки
+            const carTop = 580; // Верх машинки
+            const carBottom = 700; // Низ машинки (580 + 120)
+            const carLeft = lanePositions[carPosition];
+            const carRight = carLeft + 80;
+            
+            // Точные координаты препятствия
+            const obstacleTop = obstacle.top;
+            const obstacleBottom = obstacle.top + 70;
+            const obstacleLeft = obstaclePositions[obstacle.lane];
+            const obstacleRight = obstacleLeft + 60;
+            
+            // Проверяем пересечение по вертикали
+            const verticalOverlap = !(carBottom < obstacleTop || carTop > obstacleBottom);
+            
+            // Проверяем пересечение по горизонтали
+            const horizontalOverlap = !(carRight < obstacleLeft || carLeft > obstacleRight);
+            
+            // Столкновение происходит только если есть пересечение и по вертикали, и по горизонтали
+            return verticalOverlap && horizontalOverlap;
+        }
+        
+        // Увеличение счета
+        function increaseScore() {
+            score += 10;
+            scoreElement.textContent = `Очки: ${score}`;
+            
+            // Увеличиваем скорость игры каждые 20 очков
+            if (score - lastScoreForSpeedIncrease >= 20) {
+                gameSpeed += 0.5; // Плавное увеличение скорости
+                lastScoreForSpeedIncrease = score;
+                speedMultiplier = (gameSpeed / initialGameSpeed).toFixed(1);
+                speedMultiplierElement.textContent = `${speedMultiplier}x`;
+            }
+        }
+        
+        // Пауза игры
+        function togglePause() {
+            if (!gameActive) return;
+            
+            gamePaused = !gamePaused;
+            
+            if (gamePaused) {
+                clearInterval(gameLoopId);
+                clearInterval(obstacleIntervalId);
+                pauseOverlay.style.display = 'flex';
+            } else {
+                pauseOverlay.style.display = 'none';
+                startGameLoop();
+                startObstacleGeneration();
+            }
+        }
+        
+        // Завершение игры
+        function gameOver() {
+            gameActive = false;
+            gamePaused = false;
+            
+            clearInterval(gameLoopId);
+            clearInterval(obstacleIntervalId);
+            
+            pauseOverlay.style.display = 'none';
+            finalScoreElement.textContent = `Очки: ${score}`;
+            gameOverScreen.style.display = 'flex';
+        }
+        
+        // Сброс игры
+        function resetGame() {
+            // Удаляем все препятствия
+            obstacles.forEach(obstacle => {
+                if (obstacle.element && obstacle.element.parentNode) {
+                    obstacle.element.remove();
+                }
+            });
+            obstacles = [];
+            
+            // Сбрасываем переменные
+            score = 0;
+            gameSpeed = initialGameSpeed;
+            speedMultiplier = 1;
+            carPosition = 1;
+            car.style.left = lanePositions[carPosition] + 'px';
+            lastScoreForSpeedIncrease = 0;
+            
+            // Обновляем отображение
+            scoreElement.textContent = `Очки: ${score}`;
+            speedMultiplierElement.textContent = `${speedMultiplier}x`;
+            
+            // Скрываем экраны
+            gameOverScreen.style.display = 'none';
+            startScreen.style.display = 'none';
+            pauseOverlay.style.display = 'none';
+            
+            // Запускаем игру
+            startGame();
+        }
+        
+        // Запуск игрового цикла
+        function startGameLoop() {
+            clearInterval(gameLoopId);
+            gameLoopId = setInterval(() => {
+                updateObstacles();
+            }, 16);
+        }
+        
+        // Запуск генерации препятствий
+        function startObstacleGeneration() {
+            clearInterval(obstacleIntervalId);
+            obstacleIntervalId = setInterval(() => {
+                createObstacle();
+            }, 2200); // Немного увеличен интервал для большего поля
+        }
+        
+        // Запуск игры
+        function startGame() {
+            gameActive = true;
+            gamePaused = false;
+            
+            startGameLoop();
+            startObstacleGeneration();
+            
+            // Создаем первое препятствие через 1 секунду
+            setTimeout(() => {
+                createObstacle();
+            }, 1200);
+        }
+        
+        // Обработчики кнопок
+        startBtn.addEventListener('click', () => {
+            startScreen.style.display = 'none';
+            startGame();
+        });
+        
+        restartBtn.addEventListener('click', resetGame);
+        
+        // Инициализация игры
+        window.addEventListener('load', () => {
+            startScreen.style.display = 'flex';
+        });
+    </script>
+</body>
+</html>
